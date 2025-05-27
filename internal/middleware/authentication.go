@@ -34,19 +34,35 @@ func Authentication(DB *gorm.DB) func(http.Handler) http.Handler {
 			})
 
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				path := r.URL.Path
-				switch path {
-				case "/v1/auth/refresh":
-					next.ServeHTTP(w, r)
-				default:
-					message := "Token has expired"
-					response.SendJSON(w, http.StatusUnauthorized, nil, message)
-					return
-				}
+				message := "Token has expired"
+				response.SendJSON(w, http.StatusUnauthorized, nil, message)
+				return
 
 			}
 
 			if err != nil || !token.Valid {
+				fmt.Println(err)
+				response.SendJSON(w, http.StatusUnauthorized, nil, message)
+				return
+			}
+
+			accessToken := struct {
+				AccessToken string `json:"access_token"`
+			}{
+				AccessToken: tokenString,
+			}
+			query := "SELECT access_token FROM user_tokens WHERE access_token = ?"
+			result := DB.Raw(query, tokenString).Scan(&accessToken)
+
+			if result.Error != nil {
+				fmt.Println(result.Error.Error())
+				message = "Database error"
+				response.SendJSON(w, http.StatusInternalServerError, nil, message)
+				return
+			}
+
+			if result.RowsAffected == 0 {
+				message = "Invalid access token"
 				response.SendJSON(w, http.StatusUnauthorized, nil, message)
 				return
 			}
