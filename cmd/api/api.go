@@ -2,6 +2,7 @@ package main
 
 import (
 	"caloria-backend/internal/controller/health"
+	"caloria-backend/internal/controller/permission"
 	"caloria-backend/internal/controller/user"
 	customMiddleware "caloria-backend/internal/middleware"
 	"log"
@@ -19,6 +20,7 @@ type application struct {
 	db     *gorm.DB
 	userController   *user.UserController
 	healthController *health.HealthController
+	permissionController *permission.PermissionController
 }
 
 type config struct {
@@ -61,6 +63,14 @@ func (app *application) mount() http.Handler {
 			r.Post("/register", app.userController.Create)
 			r.Get("/login", app.userController.Login)
 			r.Get("/refresh", app.userController.RefreshToken)
+		})
+		r.Route("/permissions", func(r chi.Router) {
+			r.Use(customMiddleware.Authentication(app.db))
+			r.Get("/", app.permissionController.FindAll)
+			r.Post("/", app.permissionController.Create)
+			r.Put("/{id}", app.permissionController.Update)
+			r.Delete("/{id}", app.permissionController.Delete)
+			r.Get("/{id}", app.permissionController.FindById)
 		})
 	})
 

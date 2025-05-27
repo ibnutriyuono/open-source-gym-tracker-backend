@@ -1,6 +1,7 @@
 package main
 
 import (
+	"caloria-backend/internal/controller/permission"
 	"caloria-backend/internal/controller/user"
 	"caloria-backend/internal/env"
 	"caloria-backend/internal/model"
@@ -52,11 +53,13 @@ func main() {
 		log.Fatalf("AutoMigrate failed: %v", err)
 	}
 
-
 	app := &application{
 		config: *config,
 		db:     db,
 		userController: &user.UserController{
+			DB: db,
+		},
+		permissionController: &permission.PermissionController{
 			DB: db,
 		},
 	}
