@@ -9,13 +9,22 @@ import (
 
 type HealthController struct{}
 
+// HealthCheck caloria
+//
+// @Summary Get health
+// @Description Get health status
+// @Tags health
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /health [get]
 func (uc *HealthController) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 	selectedKeys := map[string]bool{
-		"version":         true,
-		"database":        true,
-		"goroutines":      true,
-		"mem_stats": true,
+		"version":    true,
+		"database":   true,
+		"goroutines": true,
+		"mem_stats":  true,
 	}
 
 	expvarMap := make(map[string]interface{})

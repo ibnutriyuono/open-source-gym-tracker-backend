@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	_ "caloria-backend/docs"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"gorm.io/gorm"
-	// "gorm.io/gorm"
 )
 
 type application struct {
@@ -50,6 +52,7 @@ func (app *application) mount() http.Handler {
 	// 	DB: app.db,
 	// }
 
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthController.HealthCheck)
 		r.Route("/users", func(r chi.Router) {

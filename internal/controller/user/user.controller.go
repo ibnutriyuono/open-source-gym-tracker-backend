@@ -23,6 +23,33 @@ type UserController struct {
 	DB *gorm.DB
 }
 
+type RefreshTokenRequest struct {
+    RefreshToken string `json:"refresh_token"`
+}
+
+type AccessTokenResponse struct {
+    AccessToken string `json:"access_token"`
+}
+
+type LoginRequest struct {
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
+type LoginResponse struct {
+    AccessToken  string `json:"access_token"`
+    RefreshToken string `json:"refresh_token"`
+}
+
+// FindAll users
+// 
+// @Summary List all users
+// @Description Get all users
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.User
+// @Router /users [get]
 func (uc *UserController) FindAll(w http.ResponseWriter, r *http.Request) {
 	users := []model.User{}
 	result := uc.DB.Raw("SELECT id, first_name, last_name, email FROM users WHERE is_deleted = false").Scan(&users)
@@ -43,6 +70,17 @@ func (uc *UserController) FindAll(w http.ResponseWriter, r *http.Request) {
 	response.SendJSON(w, http.StatusOK, users, message)
 }
 
+// Create user
+// 
+// @Summary Create new user
+// @Description Create a new user with the provided data
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body model.User true "User to create"
+// @Success 201 {object} model.User
+// @Failure 400 {object} response.JSONResponse
+// @Router /users [post]
 func (uc *UserController) Create(w http.ResponseWriter, r *http.Request) {
 	user := model.User{}
 	message := "Success create user"
@@ -102,6 +140,19 @@ func (uc *UserController) Create(w http.ResponseWriter, r *http.Request) {
 	response.SendJSON(w, http.StatusOK, responseData, message)
 }
 
+// Update
+// 
+// @Summary Update user by ID
+// @Description Update user information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param user body model.User true "User data to update"
+// @Success 200 {object} model.User
+// @Failure 400 {object} response.JSONResponse
+// @Failure 404 {object} response.JSONResponse
+// @Router /users/{id} [put]
 func (uc *UserController) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	// user := model.User{}
@@ -235,6 +286,17 @@ func (uc *UserController) Update(w http.ResponseWriter, r *http.Request) {
 	response.SendJSON(w, http.StatusOK, responseData, message)
 }
 
+// Delete
+// 
+// @Summary Delete user by ID
+// @Description Delete user with specified ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} response.JSONResponse
+// @Router /users/{id} [delete]
 func (uc *UserController) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existingUser := model.User{}
@@ -288,6 +350,17 @@ func (uc *UserController) Delete(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// FindById
+// 
+// @Summary Get user by ID
+// @Description Get details of user by ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} model.User
+// @Failure 404 {object} response.JSONResponse
+// @Router /users/{id} [get]
 func (uc *UserController) FindById(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	user := model.User{}
@@ -334,6 +407,17 @@ func (uc *UserController) FindById(w http.ResponseWriter, r *http.Request) {
 	response.SendJSON(w, http.StatusOK, responseData, message)
 }
 
+// Login
+// 
+// @Summary User login
+// @Description Login with email and password
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param token body RefreshTokenRequest true "Refresh Token"
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} map[string]interface{}
+// @Router /users/login [post]
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	user := model.User{}
 	loginReq := struct {
@@ -429,6 +513,17 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	response.SendJSON(w, http.StatusOK, responseData, message)
 }
 
+// RefreshToken
+// 
+// @Summary Refresh JWT token
+// @Description Get new access token using refresh token
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param token body RefreshTokenRequest true "Refresh Token"
+// @Success 200 {object} AccessTokenResponse
+// @Failure 401 {object} map[string]interface{}
+// @Router /users/refresh-token [post]
 func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	refreshTokenParam := params.Get("token")

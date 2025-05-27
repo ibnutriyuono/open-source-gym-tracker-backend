@@ -15,6 +15,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// @title Caloria API
+// @version 1.0
+// @description This is the API for Caloria app
+// @host localhost:8080
+// @BasePath /api/v1
 func main() {
 	err := godotenv.Load()
 	if err != nil {
