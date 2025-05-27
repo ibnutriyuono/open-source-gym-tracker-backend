@@ -24,6 +24,7 @@ type User struct {
 	DateOfBirth  string     `gorm:"type:char(2)" json:"date_of_birth,omitempty" validate:"omitempty,len=2,numeric"`
 	Gender       *string    `gorm:"type:varchar(20)" json:"gender,omitempty" validate:"omitempty,oneof=male female other"`
 	VerifiedAt   *time.Time `json:"verified_at,omitempty"`
+	UserTokens []UserToken `gorm:"foreignKey:UserID" json:"-"`
 }
 
 // func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
