@@ -9,7 +9,6 @@ import (
 	"caloria-backend/internal/model"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -360,7 +359,7 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 
 	if result.Error != nil || result.RowsAffected == 0 {
 		message = "Invalid email or password"
-		fmt.Println(result.Error.Error())
+	
 		response.SendJSON(w, http.StatusUnauthorized, nil, message)
 		return
 	}
@@ -375,7 +374,6 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	accessTokenDuration := 1 * time.Minute
 	accessToken, err := token.GenerateJWT(string(user.ID), accessTokenDuration)
 	if err != nil {
-		fmt.Println(err)
 		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to generate access token")
 		return
 	}
@@ -383,7 +381,6 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	refreshTokenDuration := 30 * 24 * time.Hour
 	refreshToken, err := token.GenerateJWT(string(user.ID), refreshTokenDuration)
 	if err != nil {
-		fmt.Println(err)
 		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to generate access token")
 		return
 	}
@@ -392,7 +389,6 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	clientIP := ip.GetClientIP(r)
 	encrypt, err := token.EncryptWithPublicKey([]byte(clientIP), "public.pem")
 	if err != nil {
-		fmt.Println(err)
 		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to encrypt data")
 		return
 	}
@@ -447,7 +443,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	result := uc.DB.Raw(query, refreshTokenParam).Scan(&userToken)
 	if result.Error != nil || result.RowsAffected == 0 {
 		message := "Invalid refresh token"
-		fmt.Println(result.Error.Error())
+	
 		response.SendJSON(w, http.StatusUnauthorized, nil, message)
 		return
 	}
