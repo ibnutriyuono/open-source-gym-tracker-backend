@@ -39,7 +39,7 @@ func main() {
 
 	app := &application{
 		config: *config,
-		// db:     db,
+		db:     db,
 		userController: &user.UserController{
 			DB: db,
 		},
