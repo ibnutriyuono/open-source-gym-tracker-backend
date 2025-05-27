@@ -3,6 +3,7 @@ package main
 import (
 	"caloria-backend/internal/controller/user"
 	"caloria-backend/internal/env"
+	"caloria-backend/internal/model"
 	"expvar"
 	"fmt"
 	"log"
@@ -37,6 +38,8 @@ func main() {
 		panic("failed to connect to database: " + err.Error())
 	}
 
+	db.AutoMigrate(&model.User{}, &model.UserToken{})
+
 	app := &application{
 		config: *config,
 		db:     db,
@@ -69,16 +72,15 @@ func main() {
 		return runtime.NumGoroutine()
 	}))
 	expvar.Publish("mem_stats", expvar.Func(func() any {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return map[string]any{
-		"Alloc":      m.Alloc,
-		"TotalAlloc": m.TotalAlloc,
-		"Sys":        m.Sys,
-		"NumGC":      m.NumGC,
-	}
-}))
-
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return map[string]any{
+			"Alloc":      m.Alloc,
+			"TotalAlloc": m.TotalAlloc,
+			"Sys":        m.Sys,
+			"NumGC":      m.NumGC,
+		}
+	}))
 
 	log.Fatal(app.run(mux))
 }
