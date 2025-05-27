@@ -435,26 +435,19 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 
 func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
-	authorizationHeader := r.Header.Get("Authorization")
 	refreshTokenParam := params.Get("token")
 	if refreshTokenParam == "" {
 		message := "Token param required"
 		response.SendJSON(w, http.StatusBadRequest, nil, message)
 		return
 	}
-	message := "Invalid token"
-	if authorizationHeader == "" || !strings.HasPrefix(authorizationHeader, "Bearer") {
-		response.SendJSON(w, http.StatusUnauthorized, nil, message)
-		return
-	}
-
-	tokenString := strings.TrimSpace(strings.TrimPrefix(authorizationHeader, "Bearer"))
 
 	userToken := model.UserToken{}
-	query := "SELECT * FROM user_tokens WHERE access_token = ? AND refresh_token = ?"
-	result := uc.DB.Raw(query, tokenString, refreshTokenParam).Scan(&userToken)
+	query := "SELECT * FROM user_tokens WHERE refresh_token = ?"
+	result := uc.DB.Raw(query, refreshTokenParam).Scan(&userToken)
 	if result.Error != nil || result.RowsAffected == 0 {
-		message = "Invalid token combination"
+		message := "Invalid refresh token"
+		fmt.Println(result.Error.Error())
 		response.SendJSON(w, http.StatusUnauthorized, nil, message)
 		return
 	}
@@ -467,7 +460,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	accessTokenDuration := 1 * time.Minute
 	newAccessToken, err := token.GenerateJWT(string(userId), accessTokenDuration)
 	if err != nil {
-		message = "Failed to generate new access token"
+		message := "Failed to generate new access token"
 		response.SendJSON(w, http.StatusInternalServerError, nil, message)
 		return
 	}
@@ -478,9 +471,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 `
 	result = uc.DB.Exec(query, newAccessToken, refreshToken)
 	if result.Error != nil || result.RowsAffected == 0 {
-		fmt.Println(result.Error.Error())
-
-		message = "Failed to update access token"
+		message := "Failed to update access token"
 		response.SendJSON(w, http.StatusUnauthorized, nil, message)
 		return
 	}

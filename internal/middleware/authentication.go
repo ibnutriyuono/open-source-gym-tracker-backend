@@ -38,7 +38,6 @@ func Authentication(DB *gorm.DB) func(http.Handler) http.Handler {
 				switch path {
 				case "/v1/auth/refresh":
 					next.ServeHTTP(w, r)
-					return
 				default:
 					message := "Token has expired"
 					response.SendJSON(w, http.StatusUnauthorized, nil, message)

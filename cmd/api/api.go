@@ -60,7 +60,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", app.userController.Create)
 			r.Get("/login", app.userController.Login)
-			r.With(customMiddleware.Authentication(app.db)).Get("/refresh", app.userController.RefreshToken)
+			r.Get("/refresh", app.userController.RefreshToken)
 		})
 	})
 
