@@ -38,7 +38,18 @@ func main() {
 		panic("failed to connect to database: " + err.Error())
 	}
 
-	db.AutoMigrate(&model.User{}, &model.UserToken{})
+	err = db.AutoMigrate(
+		&model.User{},
+		&model.UserToken{},
+		&model.Role{},
+		&model.Permission{},
+		&model.RolePermission{},
+		&model.UserRole{},
+	)
+	if err != nil {
+		log.Fatalf("AutoMigrate failed: %v", err)
+	}
+
 
 	app := &application{
 		config: *config,
