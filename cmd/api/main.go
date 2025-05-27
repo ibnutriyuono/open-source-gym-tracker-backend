@@ -45,6 +45,8 @@ func main() {
 		&model.Permission{},
 		&model.RolePermission{},
 		&model.UserRole{},
+		&model.Exercise{},
+		&model.WorkoutRoutine{},
 	)
 	if err != nil {
 		log.Fatalf("AutoMigrate failed: %v", err)
