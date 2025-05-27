@@ -14,6 +14,6 @@ type UserToken struct {
 	ExpiresAt    *time.Time `gorm:"type:timestamptz" json:"expires_at,omitempty"`
 	IsRevoked    bool       `gorm:"default:false" json:"is_revoked"`
 	CreatedAt    time.Time  `gorm:"autoCreateTime" json:"created_at"`
-
-	User User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"-"`
+	UpdatedAt    time.Time  `gorm:"type:timestamptz;not null;default:now()" json:"-"`
+	User         User       `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"-"`
 }

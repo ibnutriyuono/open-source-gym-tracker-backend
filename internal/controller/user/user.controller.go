@@ -460,11 +460,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		response.SendJSON(w, http.StatusInternalServerError, nil, message)
 		return
 	}
-	query = `
-	UPDATE user_tokens SET 
-		access_token = ?
-	WHERE refresh_token = ?
-`
+	query = `UPDATE user_tokens SET access_token = ?, updated_at = NOW() WHERE refresh_token = ?`
 	result = uc.DB.Exec(query, newAccessToken, refreshToken)
 	if result.Error != nil || result.RowsAffected == 0 {
 		message := "Failed to update access token"
