@@ -3,6 +3,7 @@ package middleware
 import (
 	"caloria-backend/internal/env"
 	"caloria-backend/internal/helper/response"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 )
 
 func Authentication(DB *gorm.DB) func(http.Handler) http.Handler {
+	type contextKey string
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get("Authorization")
@@ -48,10 +51,11 @@ func Authentication(DB *gorm.DB) func(http.Handler) http.Handler {
 
 			accessToken := struct {
 				AccessToken string `json:"access_token"`
+				UserId      string `json:"id"`
 			}{
 				AccessToken: tokenString,
 			}
-			query := "SELECT access_token FROM user_tokens WHERE access_token = ?"
+			query := "SELECT user_id, access_token FROM user_tokens WHERE access_token = ?"
 			result := DB.Raw(query, tokenString).Scan(&accessToken)
 
 			if result.Error != nil {
@@ -66,6 +70,10 @@ func Authentication(DB *gorm.DB) func(http.Handler) http.Handler {
 				response.SendJSON(w, http.StatusUnauthorized, nil, message)
 				return
 			}
+
+			const contextKey contextKey = "userID"
+			ctx := context.WithValue(r.Context(), contextKey, string(accessToken.UserId))
+			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})
