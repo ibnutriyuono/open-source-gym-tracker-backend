@@ -2,12 +2,17 @@ package user
 
 import (
 	"caloria-backend/internal/helper/hash"
+	"caloria-backend/internal/helper/ip"
 	"caloria-backend/internal/helper/response"
+	"caloria-backend/internal/helper/token"
 	"caloria-backend/internal/helper/validation"
 	"caloria-backend/internal/model"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -328,4 +333,167 @@ func (uc *UserController) FindById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.SendJSON(w, http.StatusOK, responseData, message)
+}
+
+func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
+	user := model.User{}
+	loginReq := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{}
+
+	message := "You are successfully logged in"
+	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+		message = "Failed to decode request body"
+		response.SendJSON(w, http.StatusInternalServerError, nil, message)
+		return
+	}
+
+	if strings.TrimSpace(loginReq.Email) == "" || strings.TrimSpace(loginReq.Password) == "" {
+		message = "Email and password are required"
+		response.SendJSON(w, http.StatusBadRequest, nil, message)
+		return
+	}
+
+	query := "SELECT id, email, password FROM users WHERE email = ? AND is_deleted = false"
+	result := uc.DB.Raw(query, loginReq.Email).Scan((&user))
+
+	if result.Error != nil || result.RowsAffected == 0 {
+		message = "Invalid email or password"
+		fmt.Println(result.Error.Error())
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+
+	isValidPassword := hash.CheckPasswordHash(loginReq.Password, user.Password)
+
+	if isValidPassword != nil {
+		message = "Invalid email or password"
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+	accessTokenDuration := 1 * time.Minute
+	accessToken, err := token.GenerateJWT(string(user.ID), accessTokenDuration)
+	if err != nil {
+		fmt.Println(err)
+		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to generate access token")
+		return
+	}
+
+	refreshTokenDuration := 30 * 24 * time.Hour
+	refreshToken, err := token.GenerateJWT(string(user.ID), refreshTokenDuration)
+	if err != nil {
+		fmt.Println(err)
+		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to generate access token")
+		return
+	}
+
+	userAgent := r.UserAgent()
+	clientIP := ip.GetClientIP(r)
+	encrypt, err := token.EncryptWithPublicKey([]byte(clientIP), "public.pem")
+	if err != nil {
+		fmt.Println(err)
+		response.SendJSON(w, http.StatusInternalServerError, nil, "Failed to encrypt data")
+		return
+	}
+	base64IP := base64.StdEncoding.EncodeToString(encrypt)
+
+	query = "SELECT * FROM user_tokens WHERE user_id = ?"
+	userToken := []model.UserToken{}
+	result = uc.DB.Raw(query, user.ID).Scan(&userToken)
+
+	if result.Error != nil {
+		message = "Invalid email or password"
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+	query = "INSERT INTO user_tokens (id, access_token, refresh_token, user_agent, ip_address, expires_at, is_revoked, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+	uuidValueV7, err := uuid.NewV7()
+	if err != nil {
+		message = "Failed to create uuid"
+		response.SendJSON(w, http.StatusInternalServerError, nil, message)
+		return
+	}
+
+	result = uc.DB.Exec(query, uuidValueV7.String(), accessToken, refreshToken, userAgent, base64IP, nil, false, user.ID)
+	if result.Error != nil {
+		message = "Invalid user token"
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+
+	responseData := struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	response.SendJSON(w, http.StatusOK, responseData, message)
+}
+
+func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	authorizationHeader := r.Header.Get("Authorization")
+	refreshTokenParam := params.Get("token")
+	if refreshTokenParam == "" {
+		message := "Token param required"
+		response.SendJSON(w, http.StatusBadRequest, nil, message)
+		return
+	}
+	message := "Invalid token"
+	if authorizationHeader == "" || !strings.HasPrefix(authorizationHeader, "Bearer") {
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+
+	tokenString := strings.TrimSpace(strings.TrimPrefix(authorizationHeader, "Bearer"))
+
+	userToken := model.UserToken{}
+	query := "SELECT * FROM user_tokens WHERE access_token = ? AND refresh_token = ?"
+	result := uc.DB.Raw(query, tokenString, refreshTokenParam).Scan(&userToken)
+	if result.Error != nil || result.RowsAffected == 0 {
+		message = "Invalid token combination"
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+
+	userId := userToken.ID
+	accessToken := userToken.AccessToken
+	refreshToken := userToken.RefreshToken
+
+	// generate new token
+	accessTokenDuration := 1 * time.Minute
+	newAccessToken, err := token.GenerateJWT(string(userId), accessTokenDuration)
+	if err != nil {
+		message = "Failed to generate new access token"
+		response.SendJSON(w, http.StatusInternalServerError, nil, message)
+		return
+	}
+	query = `
+	UPDATE user_tokens SET 
+		access_token = ?
+	WHERE refresh_token = ?
+`
+	result = uc.DB.Exec(query, newAccessToken, refreshToken)
+	if result.Error != nil || result.RowsAffected == 0 {
+		fmt.Println(result.Error.Error())
+
+		message = "Failed to update access token"
+		response.SendJSON(w, http.StatusUnauthorized, nil, message)
+		return
+	}
+
+	responseData := struct {
+		ID           string `json:"id"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}{
+		ID:           userToken.UserID,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	response.SendJSON(w, http.StatusOK, responseData, "message")
 }
