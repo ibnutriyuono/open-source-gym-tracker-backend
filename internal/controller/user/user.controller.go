@@ -449,7 +449,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userId := userToken.ID
-	accessToken := userToken.AccessToken
+	// accessToken := userToken.AccessToken
 	refreshToken := userToken.RefreshToken
 
 	// generate new token
@@ -478,7 +478,7 @@ func (uc *UserController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		RefreshToken string `json:"refresh_token"`
 	}{
 		ID:           userToken.UserID,
-		AccessToken:  accessToken,
+		AccessToken:  newAccessToken,
 		RefreshToken: refreshToken,
 	}
 
